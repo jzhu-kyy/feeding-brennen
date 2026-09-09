@@ -10,7 +10,7 @@
 
 | 阶段 | Task | 完成标准 | 状态 |
 | --- | --- | --- | --- |
-| 0. 准备 | 从官方模板建立个人公开仓库；使用独立开发分支 | 仓库公开，模板来源正确，改动不直接堆在 `main` | 公开仓库已创建；开发分支待推送 |
+| 0. 准备 | 从官方模板建立个人公开仓库；使用独立开发分支 | 仓库公开，模板来源正确，改动不直接堆在 `main` | 完成 |
 | 0. 准备 | 安装并启动 Docker Desktop；运行 `./setup.sh` | `/api/health` 返回 `200 {"status":"ok"}`，数据库已有 seed 数据 | 阻塞：本机未安装 Docker |
 | A1 | 修复 Restaurant 列表查询 | `GET /api/restaurants` 返回 `200` 和数组；首页能显示 5 条 seed 数据 | 已编码，待 DB 验证 |
 | A2 | 实现 `POST /api/restaurants` | 合法输入写入数据库，返回 `201` 和 contract 规定的 Restaurant | 已编码，待 DB 验证 |
