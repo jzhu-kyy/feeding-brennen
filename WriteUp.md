@@ -1,85 +1,105 @@
 # Write-up
 
-> This is the skeleton - replace everything in blockquotes with your own words
-> and delete the prompts as you go. Aim for **~300 words** across the four
-> questions; the route reference below can be as long as it needs to be.
->
-> Write it like you're handing the work to a teammate. We'd rather read an
-> honest "I ran out of time on X and here's what I'd do" than a polished list of
-> accomplishments. **Submit this even if you didn't finish** - see CHALLENGE.md.
-
 ## 1. What did you build for Part B, and why that?
 
-> What made you pick it over everything else you could have built? This is the
-> question we care most about - the _why_ matters more than the _what_.
+I built visit tracking: the home page now shows total spending, visit count,
+average spend, recent dining history, and a form for logging a visit. A saved
+visit immediately appears in the timeline and updates the summary; visits can
+also be deleted.
+
+I chose this because it closes the largest gap between the app's stated purpose
+and its starting behavior. The schema already contained a seeded `visits` table,
+but none of that data was reachable through HTTP or visible in the UI. Connecting
+that existing model produced a useful end-to-end feature without inventing more
+scope or changing the database prematurely.
 
 ## 2. What did you decide, and what did you rule out?
 
-> Route shapes, data model, where the logic lives, what you deliberately didn't
-> do. Name a tradeoff you're not sure you got right.
+The frontend only talks to REST route handlers. `GET /api/visits` supplies the
+timeline, `POST /api/visits` creates a record, and `DELETE /api/visits/:id`
+supports undoing one. Validation lives beside the shared Part A validation code,
+and all route failures pass through the shared error mapper.
+
+The POST query uses `INSERT ... SELECT` against `restaurants`, so a nonexistent
+restaurant becomes a clean `404` without a separate check-then-insert race. I
+kept summary calculations in the client because the current dataset is small and
+already needed for the timeline. I deliberately ruled out pagination, editing
+visits, authentication, multiple currencies, and a new analytics table. The
+tradeoff is that client-side aggregation will not scale to a large history; a
+future version should expose a paginated visit feed and a database-backed summary
+endpoint.
 
 ## 3. Where did you cut corners?
 
-> What would you fix first with another day?
+The delete action has no confirmation or recovery, dates use the browser's
+native control, and all money is displayed as USD. With another day I would add
+an undo toast, accessible interaction tests, and server-side pagination. I would
+also harden the original restaurant fetch client so network failures render a
+friendly page state instead of reaching the error boundary.
 
 ---
 
 ## Part B: routes
 
-> Every endpoint you added, with its request and response shapes, so we can
-> exercise it without reverse-engineering your code. Add or remove rows as
-> needed; delete this section if your Part B added no routes.
+| Method and path | What it does | Success | Errors |
+| --- | --- | --- | --- |
+| `GET /api/visits` | Lists visits, newest date first | `200` + visit array | `500` on an unexpected server failure |
+| `POST /api/visits` | Logs one dining visit | `201` + created visit | `400` invalid body; `404` restaurant missing |
+| `DELETE /api/visits/:id` | Deletes one visit | `204`, no body | `404` invalid ID or visit missing |
 
-| Method and path | What it does | Success | Errors       |
-| --------------- | ------------ | ------- | ------------ |
-| `GET /api/...`  |              | `200` + | `404` if ... |
-| `POST /api/...` |              | `201` + | `400` on ... |
-
-**`POST /api/...`**
+**`POST /api/visits`**
 
 ```jsonc
 // request
-{ }
+{
+  "restaurantId": 1,
+  "date": "2026-09-09",
+  "amountSpent": 24.5,
+  "notes": "Lunch with friends"
+}
 
 // 201 response
-{ }
+{
+  "id": 4,
+  "restaurantId": 1,
+  "date": "2026-09-09",
+  "amountSpent": 24.5,
+  "notes": "Lunch with friends",
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}
 ```
+
+`amountSpent` and `notes` may be `null`. Dates must be real calendar dates in
+`YYYY-MM-DD` format, and `restaurantId` must be a positive integer referring to
+an existing restaurant.
 
 ## Schema changes
 
-> Any migrations you added (`002_*.sql`, ...), new tables or columns, and
-> anything a reviewer needs to run beyond `./setup.sh`. Write "none" if there
-> were none.
+None. Part B uses the existing `visits` table from `001_create_tables.sql`.
 
 ## How I verified this
 
-> How you checked your work - the happy paths _and_ the failures. `curl`
-> commands, a Postman collection, a scratch script, screenshots: whatever you
-> actually used. Paste the commands.
->
-> This is much faster for us to review than working it out ourselves, and it's
-> how you show you checked the edge cases.
-
-**Part A** - the contract table in CHALLENGE.md, every row including the error
-cases:
-
 ```bash
-# e.g.
-curl -i http://localhost:3000/api/restaurants          # 200 + array
-curl -i http://localhost:3000/api/restaurants/99999    # 404
-curl -i http://localhost:3000/api/restaurants/abc      # 404
-curl -i -X POST http://localhost:3000/api/restaurants \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Out Of Range","rating":6}'              # 400
+./setup.sh
+cd client
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+
+# With `npm run dev` running in a separate terminal:
+npm run verify:api
 ```
 
-**Part B** - the equivalent cases for what you built:
-
-```bash
-
-```
+`verify:api` checks every Part A contract row plus malformed JSON, invalid
+types/ranges, missing records, invalid IDs, and all three Part B routes. It
+creates uniquely named test data and removes it before exiting. I also used the
+browser UI to log a `$18.75` visit, confirmed the three summary values updated,
+then removed the QA record and confirmed the seeded totals returned.
 
 ## Known issues / what I'd do next
 
-> Anything broken, unfinished, or that you know is wrong. Being upfront here
-> costs you nothing and tells us a lot.
+- Visit results are not paginated; summary math loads the full visit history.
+- There is no edit endpoint for correcting a visit.
+- Restaurant names are not unique in the starter schema, so duplicate names are
+  allowed even though database uniqueness errors are mapped to `409` centrally.

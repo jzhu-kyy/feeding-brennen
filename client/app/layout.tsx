@@ -15,11 +15,12 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen">
         <header className="border-b border-gray-200 bg-white">
-          <div className="mx-auto max-w-3xl px-6 py-4">
-            <h1 className="text-xl font-semibold">Feeding Brennen</h1>
+          <div className="mx-auto max-w-5xl px-6 py-5">
+            <h1 className="text-xl font-semibold tracking-tight">Feeding Brennen</h1>
+            <p className="mt-1 text-sm text-gray-500">Dining memories, without the receipt pile.</p>
           </div>
         </header>
-        <main className="mx-auto max-w-3xl px-6 py-8">{children}</main>
+        <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
       </body>
     </html>
   );
